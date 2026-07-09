@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #0f172a;
+
+  /* Oncre brand blue — a single validated hue ramp (light→dark), also reused
+     directly for the Kanban's Phase 1/2 ordinal accent (see phase-accent.ts)
+     so the brand color and the dashboard's own accents are one system. */
+  --color-brand-50: #eef5fd;
+  --color-brand-100: #cde2fb;
+  --color-brand-200: #9ec5f4;
+  --color-brand-300: #6da7ec;
+  --color-brand-400: #3987e5;
+  --color-brand-500: #256abf;
+  --color-brand-600: #184f95;
+  --color-brand-700: #0d366b;
+  --color-brand-800: #0a2b57;
+  --color-brand-900: #081f40;
+
+  --color-ink-900: #0f172a;
+  --color-ink-800: #1e293b;
+  --color-ink-700: #334155;
+  --color-ink-500: #64748b;
+  --color-ink-300: #cbd5e1;
+  --color-ink-100: #f1f5f9;
+  --color-ink-50: #f8fafc;
+
+  /* Status palette — reserved for case/phase state, never reused as a generic accent. */
+  --color-status-good: #0ca30c;
+  --color-status-good-soft: #eafbea;
+  --color-status-warning: #fab219;
+  --color-status-warning-soft: #fef6e6;
+  --color-status-serious: #ec835a;
+  --color-status-serious-soft: #fdece4;
+  --color-status-critical: #d03b3b;
+  --color-status-critical-soft: #fbe9e9;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --color-brand-50: var(--color-brand-50);
+  --color-brand-100: var(--color-brand-100);
+  --color-brand-200: var(--color-brand-200);
+  --color-brand-300: var(--color-brand-300);
+  --color-brand-400: var(--color-brand-400);
+  --color-brand-500: var(--color-brand-500);
+  --color-brand-600: var(--color-brand-600);
+  --color-brand-700: var(--color-brand-700);
+  --color-brand-800: var(--color-brand-800);
+  --color-brand-900: var(--color-brand-900);
+
+  --color-ink-900: var(--color-ink-900);
+  --color-ink-800: var(--color-ink-800);
+  --color-ink-700: var(--color-ink-700);
+  --color-ink-500: var(--color-ink-500);
+  --color-ink-300: var(--color-ink-300);
+  --color-ink-100: var(--color-ink-100);
+  --color-ink-50: var(--color-ink-50);
+
+  --color-status-good: var(--color-status-good);
+  --color-status-good-soft: var(--color-status-good-soft);
+  --color-status-warning: var(--color-status-warning);
+  --color-status-warning-soft: var(--color-status-warning-soft);
+  --color-status-serious: var(--color-status-serious);
+  --color-status-serious-soft: var(--color-status-serious-soft);
+  --color-status-critical: var(--color-status-critical);
+  --color-status-critical-soft: var(--color-status-critical-soft);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
