@@ -1,16 +1,14 @@
-import { apiRequest } from "@/lib/api/http-json";
+import { apiRequest, toQueryString } from "@/lib/api/http-json";
 import type { LogCallOutcomeFormValues } from "@/lib/validation/staff.schema";
 import type { ListResult } from "@/types/api";
 import type { Call, CallLog } from "@/types/call";
 
 export function listCalls(params: { skip?: number; limit?: number } = {}): Promise<ListResult<Call>> {
-  const query = new URLSearchParams(params as Record<string, string>).toString();
-  return apiRequest(`/api/staff/calls?${query}`);
+  return apiRequest(`/api/staff/calls?${toQueryString(params)}`);
 }
 
 export function listPrivilegedCalls(params: { skip?: number; limit?: number } = {}): Promise<ListResult<Call>> {
-  const query = new URLSearchParams(params as Record<string, string>).toString();
-  return apiRequest(`/api/staff/calls/list?${query}`);
+  return apiRequest(`/api/staff/calls/list?${toQueryString(params)}`);
 }
 
 export function logCallOutcome(input: LogCallOutcomeFormValues): Promise<CallLog> {

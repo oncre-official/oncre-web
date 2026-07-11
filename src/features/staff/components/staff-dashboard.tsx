@@ -1,158 +1,86 @@
 "use client";
 
-import { Briefcase, CheckCircle2, FolderKanban, ShieldCheck, TrendingUp, Users, Wallet } from "lucide-react";
+import { format } from "date-fns";
+import {
+  AlertOctagon,
+  Briefcase,
+  CalendarClock,
+  CheckCircle2,
+  PauseCircle,
+  RefreshCw,
+} from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ComponentType } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Meter } from "@/components/ui/meter";
 import { Spinner } from "@/components/ui/spinner";
+import { Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeaderCell, TableRow } from "@/components/ui/table";
 import { staffNavItems } from "@/features/staff/config/nav";
-import { listStaffUsers } from "@/lib/api/staff/admin-users";
 import { listCases } from "@/lib/api/staff/cases";
-import { listCustomers } from "@/lib/api/staff/customers";
-import { listMerchants } from "@/lib/api/staff/merchants";
-import { listPayments } from "@/lib/api/staff/payments";
+import { getDashboardSummary } from "@/lib/api/staff/dashboard";
 import { useStaffSessionStore } from "@/lib/stores/staff-session-store";
 import { getCaseStatusLabel, getCaseStatusTone } from "@/lib/utils/case-status-tone";
-import { formatNairaCompact } from "@/lib/utils/currency";
+import { formatNaira, formatNairaCompact } from "@/lib/utils/currency";
 import { formatCompactNumber } from "@/lib/utils/format";
-import { computeDashboardKpis } from "@/lib/utils/kpi";
-import { ADMIN_USER_ROLES, CASE_LIST_ROLES, hasRole } from "@/lib/utils/staff-permissions";
+import { handleStaffApiError } from "@/lib/utils/staff-error";
+import {
+  CASE_LIST_ROLES,
+  DASHBOARD_PAYMENT_ROLES,
+  DASHBOARD_QUICK_ACTIONS,
+  hasRole,
+} from "@/lib/utils/staff-permissions";
 import type { Case } from "@/types/case";
-import { PaymentStatus } from "@/types/payment";
+import type { DashboardSummary } from "@/types/dashboard";
 
-interface StatTile {
+interface KpiTile {
   label: string;
   value: string;
   icon: ComponentType<{ className?: string }>;
   chipBg: string;
   chipText: string;
-  meter?: number;
 }
 
 export function StaffDashboard() {
   const roleName = useStaffSessionStore((s) => s.user?.role?.name);
   const canViewCases = hasRole(roleName, CASE_LIST_ROLES);
-  const canViewAdminUsers = hasRole(roleName, ADMIN_USER_ROLES);
+  const canViewPayments = hasRole(roleName, DASHBOARD_PAYMENT_ROLES);
 
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [recentCases, setRecentCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
-  const [merchantCount, setMerchantCount] = useState(0);
-  const [customerCount, setCustomerCount] = useState(0);
-  const [cases, setCases] = useState<Case[]>([]);
-  const [paymentsCollected, setPaymentsCollected] = useState(0);
-  const [staffUserCount, setStaffUserCount] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const requests: Promise<void>[] = [
-      listMerchants({ limit: 1 }).then((r) => {
-        if (!cancelled) setMerchantCount(r.count);
-      }),
-      listCustomers({ limit: 1 }).then((r) => {
-        if (!cancelled) setCustomerCount(r.count);
-      }),
-      listPayments({ limit: 200 }).then((r) => {
-        if (!cancelled) {
-          const collected = r.row.filter((p) => p.status === PaymentStatus.PAID).reduce((sum, p) => sum + p.amount, 0);
-          setPaymentsCollected(collected);
-        }
-      }),
-    ];
+  const loadDashboard = useCallback(() => {
+    const requests: Promise<void>[] = [getDashboardSummary().then((result) => setSummary(result))];
 
     if (canViewCases) {
       requests.push(
-        listCases({ limit: 200 }).then((r) => {
-          if (!cancelled) setCases(r.row);
-        }),
-      );
-    }
-    if (canViewAdminUsers) {
-      requests.push(
-        listStaffUsers({ limit: 1 }).then((r) => {
-          if (!cancelled) setStaffUserCount(r.count);
+        listCases({ limit: 200 }).then((result) => {
+          const sorted = [...result.row].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+          setRecentCases(sorted.slice(0, 5));
         }),
       );
     }
 
-    Promise.allSettled(requests).then(() => {
-      if (!cancelled) setLoading(false);
+    return Promise.allSettled(requests).then((results) => {
+      const failure = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
+      if (failure) handleStaffApiError(failure.reason);
     });
+  }, [canViewCases]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [canViewCases, canViewAdminUsers]);
+  useEffect(() => {
+    loadDashboard().finally(() => setLoading(false));
+  }, [loadDashboard]);
 
-  const caseKpis = computeDashboardKpis(cases);
-  const recentCases = [...cases]
-    .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))
-    .slice(0, 5);
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadDashboard().finally(() => setRefreshing(false));
+  };
 
-  const tiles: StatTile[] = [
-    {
-      label: "Total merchants",
-      value: formatCompactNumber(merchantCount),
-      icon: Briefcase,
-      chipBg: "bg-brand-50",
-      chipText: "text-brand-700",
-    },
-    {
-      label: "Total customers",
-      value: formatCompactNumber(customerCount),
-      icon: Users,
-      chipBg: "bg-brand-50",
-      chipText: "text-brand-700",
-    },
-    {
-      label: "Payments collected",
-      value: formatNairaCompact(paymentsCollected),
-      icon: Wallet,
-      chipBg: "bg-status-good-soft",
-      chipText: "text-status-good",
-    },
-  ];
-
-  if (canViewCases) {
-    tiles.push(
-      {
-        label: "Total cases",
-        value: formatCompactNumber(caseKpis.totalCases),
-        icon: FolderKanban,
-        chipBg: "bg-brand-50",
-        chipText: "text-brand-700",
-      },
-      {
-        label: "Cases resolved",
-        value: formatCompactNumber(caseKpis.casesResolved),
-        icon: CheckCircle2,
-        chipBg: "bg-status-good-soft",
-        chipText: "text-status-good",
-      },
-      {
-        label: "Recovery rate",
-        value: `${caseKpis.recoveryRate}%`,
-        icon: TrendingUp,
-        chipBg: "bg-status-good-soft",
-        chipText: "text-status-good",
-        meter: caseKpis.recoveryRate,
-      },
-    );
-  }
-
-  if (canViewAdminUsers) {
-    tiles.push({
-      label: "Staff users",
-      value: formatCompactNumber(staffUserCount),
-      icon: ShieldCheck,
-      chipBg: "bg-brand-50",
-      chipText: "text-brand-700",
-    });
-  }
-
+  const quickActions = DASHBOARD_QUICK_ACTIONS.filter((item) => hasRole(roleName, item.allowedRoles));
   const quickLinks = staffNavItems.filter(
     (item) => item.href !== "/staff" && (!item.allowedRoles || hasRole(roleName, item.allowedRoles)),
   );
@@ -165,9 +93,58 @@ export function StaffDashboard() {
     );
   }
 
+  const kpis = summary?.kpis;
+
+  const tiles: KpiTile[] = [
+    {
+      label: "Total Active Cases",
+      value: formatCompactNumber(kpis?.total_active_cases ?? 0),
+      icon: Briefcase,
+      chipBg: "bg-brand-50",
+      chipText: "text-brand-700",
+    },
+    {
+      label: "Total Recovered This Month",
+      value: formatCompactNumber(kpis?.total_recovered_this_month ?? 0),
+      icon: CheckCircle2,
+      chipBg: "bg-status-good-soft",
+      chipText: "text-status-good",
+    },
+    {
+      label: "Cases in Call Queue Today",
+      value: formatCompactNumber(kpis?.cases_in_call_queue_today ?? 0),
+      icon: CalendarClock,
+      chipBg: "bg-brand-50",
+      chipText: "text-brand-700",
+    },
+    {
+      label: "Passive Cases",
+      value: formatCompactNumber(kpis?.passive_cases ?? 0),
+      icon: PauseCircle,
+      chipBg: "bg-status-warning-soft",
+      chipText: "text-status-warning",
+    },
+  ];
+
+  const pipeline = summary?.payment_pipeline;
+  const upcomingPayments = summary?.upcoming_payments ?? [];
+
   return (
     <div className="flex flex-col gap-8">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-ink-900">Dashboard</h1>
+          {summary?.generated_at && (
+            <p className="text-xs text-ink-400">Updated as of {format(new Date(summary.generated_at), "d MMM yyyy, h:mm a")}</p>
+          )}
+        </div>
+        <Button variant="secondary" size="sm" loading={refreshing} onClick={handleRefresh}>
+          <RefreshCw className="h-4 w-4" />
+          Refresh
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {tiles.map((tile) => (
           <Card key={tile.label} className="p-4">
             <div className="flex items-start justify-between">
@@ -177,12 +154,91 @@ export function StaffDashboard() {
               </span>
             </div>
             <p className="mt-2 text-[28px] font-semibold leading-tight text-ink-900">{tile.value}</p>
-            {tile.meter !== undefined && (
-              <Meter value={tile.meter} fillClassName="bg-status-good" trackClassName="bg-status-good-soft" className="mt-3" />
-            )}
           </Card>
         ))}
       </div>
+
+      {canViewPayments && pipeline && (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold text-ink-900">Payment pipeline</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Card className="flex items-center gap-3 p-4">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-status-good-soft">
+                <CheckCircle2 className="h-4 w-4 text-status-good" />
+              </span>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-ink-500">Received</p>
+                <p className="text-lg font-semibold text-ink-900">
+                  {pipeline.received.count} · {formatNairaCompact(pipeline.received.total)}
+                </p>
+              </div>
+            </Card>
+            <Card className="flex items-center gap-3 p-4">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-status-warning-soft">
+                <CalendarClock className="h-4 w-4 text-status-warning" />
+              </span>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-ink-500">Pending</p>
+                <p className="text-lg font-semibold text-ink-900">
+                  {pipeline.pending.count} · {formatNairaCompact(pipeline.pending.total)}
+                </p>
+              </div>
+            </Card>
+            <Card className="flex items-center gap-3 p-4">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-status-critical-soft">
+                <AlertOctagon className="h-4 w-4 text-status-critical" />
+              </span>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-ink-500">Missed</p>
+                <p className="text-lg font-semibold text-ink-900">
+                  {pipeline.missed.count} · {formatNairaCompact(pipeline.missed.total)}
+                </p>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {canViewPayments && (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold text-ink-900">Upcoming payments this week</h2>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell>Debtor</TableHeaderCell>
+                <TableHeaderCell>Amount</TableHeaderCell>
+                <TableHeaderCell>Due date</TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {upcomingPayments.length === 0 ? (
+                <TableEmptyState colSpan={3} message="No tranches due this week." />
+              ) : (
+                upcomingPayments.map((payment) => (
+                  <TableRow key={payment.installment_id}>
+                    <TableCell>{payment.debtor_name}</TableCell>
+                    <TableCell className="tabular-nums">{formatNaira(payment.amount)}</TableCell>
+                    <TableCell>{format(new Date(payment.due_date), "d MMM yyyy")}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {quickActions.length > 0 && (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold text-ink-900">Quick actions</h2>
+          <div className="flex flex-wrap gap-3">
+            {quickActions.map((action) => (
+              <Link key={action.href} href={action.href}>
+                <Button variant="secondary">{action.label}</Button>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {canViewCases && (
         <div>

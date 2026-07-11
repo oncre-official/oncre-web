@@ -8,15 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeaderCell, TableRow } from "@/components/ui/table";
 import { CreatePaymentPlanModal } from "@/features/staff/components/create-payment-plan-modal";
+import { NoAccess } from "@/features/staff/components/no-access";
 import { listPayments } from "@/lib/api/staff/payments";
 import { useStaffSessionStore } from "@/lib/stores/staff-session-store";
 import { formatNaira } from "@/lib/utils/currency";
 import { handleStaffApiError } from "@/lib/utils/staff-error";
-import { hasRole, PAYMENT_PLAN_CREATE_ROLES } from "@/lib/utils/staff-permissions";
-import type { Payment } from "@/types/payment";
+import { hasRole, PAYMENT_PLAN_CREATE_ROLES, PAYMENT_VIEW_ROLES } from "@/lib/utils/staff-permissions";
+import { PaymentType, type Payment } from "@/types/payment";
 
 export default function PaymentsPage() {
   const roleName = useStaffSessionStore((s) => s.user?.role?.name);
+  const canAccess = hasRole(roleName, PAYMENT_VIEW_ROLES);
   const canCreate = hasRole(roleName, PAYMENT_PLAN_CREATE_ROLES);
 
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -24,11 +26,14 @@ export default function PaymentsPage() {
   const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
+    if (!canAccess) return;
     listPayments({ limit: 100 })
       .then((result) => setPayments(result.row))
       .catch(handleStaffApiError)
       .finally(() => setLoading(false));
-  }, []);
+  }, [canAccess]);
+
+  if (!canAccess) return <NoAccess />;
 
   return (
     <div>
@@ -54,6 +59,7 @@ export default function PaymentsPage() {
           <TableHead>
             <TableRow>
               <TableHeaderCell>Payment ID</TableHeaderCell>
+              <TableHeaderCell>Type</TableHeaderCell>
               <TableHeaderCell>Case ID</TableHeaderCell>
               <TableHeaderCell>Amount</TableHeaderCell>
               <TableHeaderCell>Status</TableHeaderCell>
@@ -61,12 +67,15 @@ export default function PaymentsPage() {
           </TableHead>
           <TableBody>
             {payments.length === 0 ? (
-              <TableEmptyState colSpan={4} message="No payments yet." />
+              <TableEmptyState colSpan={5} message="No payments yet." />
             ) : (
               payments.map((payment) => (
                 <TableRow key={payment._id}>
                   <TableCell className="font-mono text-xs">{payment.payment_id}</TableCell>
-                  <TableCell className="font-mono text-xs">{payment.case_id}</TableCell>
+                  <TableCell>
+                    <Badge tone={payment.type === PaymentType.CASE ? "brand" : "neutral"}>{payment.type}</Badge>
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">{payment.case_id || "—"}</TableCell>
                   <TableCell className="tabular-nums">{formatNaira(payment.amount)}</TableCell>
                   <TableCell>
                     <Badge tone="neutral">{payment.status}</Badge>

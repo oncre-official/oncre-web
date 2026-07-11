@@ -1,11 +1,12 @@
-import { apiRequest } from "@/lib/api/http-json";
+import { apiRequest, toQueryString } from "@/lib/api/http-json";
 import type { ListResult } from "@/types/api";
 import type { Case, CreateCaseInput, Dispute } from "@/types/case";
 import type { TransitionCaseFormValues } from "@/lib/validation/staff.schema";
 
-export function listCases(params: { skip?: number; limit?: number } = {}): Promise<ListResult<Case>> {
-  const query = new URLSearchParams(params as Record<string, string>).toString();
-  return apiRequest(`/api/staff/cases?${query}`);
+export function listCases(
+  params: { skip?: number; limit?: number; merchant_id?: string; customer_id?: string; status?: string } = {},
+): Promise<ListResult<Case>> {
+  return apiRequest(`/api/staff/cases?${toQueryString(params)}`);
 }
 
 export function createCase(input: CreateCaseInput): Promise<Case> {

@@ -12,10 +12,7 @@ export default function StaffHomePage() {
       <h1 className="mb-1 text-xl font-semibold text-ink-900">
         Welcome{user?.email ? `, ${user.email}` : ""}
       </h1>
-      <p className="mb-6 text-sm text-ink-500">
-        Signed in as <span className="font-medium text-ink-700">{roleName ?? "—"}</span>. What you see below
-        reflects what your role can access — the backend enforces this independently of the UI.
-      </p>
+
 
       <StaffDashboard />
     </div>

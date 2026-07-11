@@ -1,12 +1,11 @@
-import { apiRequest } from "@/lib/api/http-json";
+import { apiRequest, toQueryString } from "@/lib/api/http-json";
 import type { AdminCreateUserFormValues } from "@/lib/validation/staff.schema";
 import type { AdminUpdateUserInput, CreatedStaffUser } from "@/types/admin-user";
 import type { ListResult } from "@/types/api";
 import type { OncreUser } from "@/types/user";
 
 export function listStaffUsers(params: { skip?: number; limit?: number } = {}): Promise<ListResult<OncreUser>> {
-  const query = new URLSearchParams(params as Record<string, string>).toString();
-  return apiRequest(`/api/staff/admin/users?${query}`);
+  return apiRequest(`/api/staff/admin/users?${toQueryString(params)}`);
 }
 
 export function createStaffUser(input: AdminCreateUserFormValues): Promise<CreatedStaffUser> {

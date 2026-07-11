@@ -2,15 +2,15 @@ import { NextRequest } from "next/server";
 
 import { BackendBusinessError, staffBackendRequest } from "@/lib/server/staff-backend";
 import { jsonError, jsonSuccess } from "@/lib/server/staff-http";
-import { requireStaffRole, requireStaffSession } from "@/lib/server/staff-session";
-import { PAYMENT_PLAN_CREATE_ROLES } from "@/lib/utils/staff-permissions";
+import { requireStaffRole } from "@/lib/server/staff-session";
+import { PAYMENT_PLAN_CREATE_ROLES, PAYMENT_VIEW_ROLES } from "@/lib/utils/staff-permissions";
 import { createPaymentPlanSchema } from "@/lib/validation/staff.schema";
 import type { ListResult } from "@/types/api";
 import type { Payment } from "@/types/payment";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await requireStaffSession();
+    const session = await requireStaffRole(PAYMENT_VIEW_ROLES);
     const query = request.nextUrl.searchParams.toString();
     const result = await staffBackendRequest<ListResult<Payment>>(session.token, `/payments?${query}`);
     return jsonSuccess(result, "Payments fetched successfully.");

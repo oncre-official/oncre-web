@@ -21,6 +21,14 @@ export enum TrancheType {
   Month = "month",
 }
 
+/** Mirrors backend `MerchantPaymentStatus` (src/app/payment/types/payment.interface.ts). */
+export enum MerchantPaymentStatus {
+  PENDING = "pending",
+  CONFIRMED = "confirmed",
+  FLAGGED = "flagged",
+  FOLLOW_UP = "follow_up",
+}
+
 /** Mirrors oncre-backend `Payment` model (src/app/payment/model/payment.model.ts). */
 export interface Payment {
   _id: string;

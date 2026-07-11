@@ -1,3 +1,4 @@
+import type { Customer } from "./customer";
 import type { Merchant } from "./merchant";
 
 /** Mirrors oncre-backend `CaseStatus` (src/app/case/types/case.interface.ts). */
@@ -49,6 +50,8 @@ export interface Case {
   case_id: string;
   merchant_id: string;
   merchant?: Merchant;
+  customer_id?: string;
+  customer?: Customer;
   debtor_name: string;
   debtor_phone: string;
   debtor_address?: string;
@@ -68,6 +71,8 @@ export interface Case {
   outstanding_balance?: number;
   transition_required?: boolean;
   transition_due_at?: string;
+  /** Set once, exactly when the case transitions to FULLY_RECOVERED or PARTIALLY_RECOVERED. */
+  recovered_at?: string;
   activated_at: string;
   created_at?: string;
   updated_at?: string;

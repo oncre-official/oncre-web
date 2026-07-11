@@ -1,5 +1,18 @@
 import { ApiEnvelope, ApiError } from "@/types/api";
 
+/**
+ * `new URLSearchParams(params)` stringifies `undefined`/`null` values as the
+ * literal text "undefined"/"null" instead of omitting the key — silently
+ * sends e.g. `status=undefined` as a real filter value. Always build list
+ * query strings through this instead of the bare constructor.
+ */
+export function toQueryString(params: object): string {
+  const entries = Object.entries(params).filter(
+    ([, value]) => value !== undefined && value !== null && value !== "",
+  ) as [string, string][];
+  return new URLSearchParams(entries).toString();
+}
+
 interface RequestOptions {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
   body?: unknown;

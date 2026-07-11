@@ -1,11 +1,10 @@
-import { apiRequest } from "@/lib/api/http-json";
+import { apiRequest, toQueryString } from "@/lib/api/http-json";
 import type { CreatePaymentPlanFormOutput } from "@/lib/validation/staff.schema";
 import type { ListResult } from "@/types/api";
 import type { Payment } from "@/types/payment";
 
 export function listPayments(params: { skip?: number; limit?: number } = {}): Promise<ListResult<Payment>> {
-  const query = new URLSearchParams(params as Record<string, string>).toString();
-  return apiRequest(`/api/staff/payments?${query}`);
+  return apiRequest(`/api/staff/payments?${toQueryString(params)}`);
 }
 
 export function createPaymentPlan(input: CreatePaymentPlanFormOutput): Promise<Payment> {

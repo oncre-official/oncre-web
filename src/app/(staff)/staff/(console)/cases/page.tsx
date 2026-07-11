@@ -1,7 +1,8 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,10 @@ import { handleStaffApiError } from "@/lib/utils/staff-error";
 import { CASE_ACTION_ROLES, CASE_LIST_ROLES, hasRole } from "@/lib/utils/staff-permissions";
 import type { Case } from "@/types/case";
 
-export default function CasesPage() {
+function CasesPageInner() {
+  const searchParams = useSearchParams();
+  const statusFilter = searchParams.get("status") ?? undefined;
+
   const sessionStatus = useStaffSessionStore((s) => s.status);
   const roleName = useStaffSessionStore((s) => s.user?.role?.name);
   const canView = hasRole(roleName, CASE_LIST_ROLES);
@@ -31,16 +35,23 @@ export default function CasesPage() {
 
   const reload = () => {
     setLoading(true);
-    listCases({ limit: 100 })
+    listCases({ limit: 100, status: statusFilter })
       .then((result) => setCases(result.row))
       .catch(handleStaffApiError)
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
+    // Client-only (never runs during SSR, unlike a lazy useState initializer) — required
+    // since Modal/Drawer portal to document.body and would crash if opened during SSR.
+    // Deferred via a microtask so the setState call isn't synchronous within the effect body.
+    if (searchParams.get("create") === "1") Promise.resolve().then(() => setModalOpen(true));
+  }, [searchParams]);
+
+  useEffect(() => {
     if (!canView) return;
     let cancelled = false;
-    listCases({ limit: 100 })
+    listCases({ limit: 100, status: statusFilter })
       .then((result) => {
         if (!cancelled) setCases(result.row);
       })
@@ -53,7 +64,7 @@ export default function CasesPage() {
     return () => {
       cancelled = true;
     };
-  }, [canView]);
+  }, [canView, statusFilter]);
 
   if (sessionStatus !== "ready") {
     return (
@@ -70,7 +81,15 @@ export default function CasesPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-ink-900">Cases</h1>
-          <p className="text-sm text-ink-500">Every recovery case in the engine.</p>
+          <p className="text-sm text-ink-500">
+            {statusFilter ? (
+              <>
+                Filtered by <Badge tone="warning">{getCaseStatusLabel(statusFilter as Case["status"])}</Badge>
+              </>
+            ) : (
+              "Every recovery case in the engine."
+            )}
+          </p>
         </div>
         {canCreate && (
           <Button onClick={() => setModalOpen(true)}>
@@ -130,5 +149,13 @@ export default function CasesPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function CasesPage() {
+  return (
+    <Suspense>
+      <CasesPageInner />
+    </Suspense>
   );
 }
