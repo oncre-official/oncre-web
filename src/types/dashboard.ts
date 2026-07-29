@@ -25,8 +25,14 @@ export interface UpcomingPayment {
   due_date: string;
 }
 
+export interface EscalationPipelineBucket {
+  level: number;
+  count: number;
+}
+
 export interface DashboardSummary {
   kpis: DashboardKpiSummary;
+  escalation_pipeline: EscalationPipelineBucket[];
   payment_pipeline?: DashboardPaymentPipeline;
   upcoming_payments?: UpcomingPayment[];
   generated_at: string;

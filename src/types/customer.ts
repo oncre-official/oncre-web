@@ -26,3 +26,19 @@ export interface CreateCustomerInput {
   business_name?: string;
   customer_phone: string;
 }
+
+export enum DebtorRestrictionStatus {
+  CASH_ONLY = "cash_only",
+  ACTIVE = "active",
+}
+
+/** Mirrors oncre-backend `DebtorRestriction` model (src/app/customer/model/debtor-restriction.model.ts). */
+export interface DebtorRestriction {
+  _id: string;
+  customer_id: string;
+  status: DebtorRestrictionStatus;
+  reason?: string;
+  actioned_by?: { _id: string; email?: string; phone?: string };
+  actioned_at: string;
+  created_at?: string;
+}

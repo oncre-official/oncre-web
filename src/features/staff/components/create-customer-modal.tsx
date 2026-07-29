@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { createCustomer } from "@/lib/api/staff/customers";
 import { toast } from "@/lib/stores/toast-store";
+import { toE164Nigerian } from "@/lib/utils/phone";
 import { handleStaffApiError } from "@/lib/utils/staff-error";
 import { createCustomerSchema, CreateCustomerFormValues } from "@/lib/validation/staff.schema";
 import type { Customer } from "@/types/customer";
@@ -29,7 +30,7 @@ export function CreateCustomerModal({ open, onClose, onCreated }: CreateCustomer
 
   const onSubmit = async (values: CreateCustomerFormValues) => {
     try {
-      const customer = await createCustomer(values);
+      const customer = await createCustomer({ ...values, customer_phone: toE164Nigerian(values.customer_phone) });
       toast.success("Customer created successfully.");
       onCreated(customer);
       reset();

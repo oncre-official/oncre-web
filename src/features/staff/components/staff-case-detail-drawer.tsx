@@ -2,30 +2,55 @@
 
 import { format } from "date-fns";
 import { AlertTriangle } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
-import { escalateDispute, resolveDispute } from "@/lib/api/staff/cases";
+import { CreatePaymentPlanModal } from "@/features/staff/components/create-payment-plan-modal";
+import { escalateDispute, getDebtEvaluation, resolveDispute } from "@/lib/api/staff/cases";
 import { useStaffSessionStore } from "@/lib/stores/staff-session-store";
 import { formatNaira } from "@/lib/utils/currency";
 import { getCaseStatusLabel, getCaseStatusTone } from "@/lib/utils/case-status-tone";
 import { handleStaffApiError } from "@/lib/utils/staff-error";
-import { CASE_ACTION_ROLES, hasRole } from "@/lib/utils/staff-permissions";
+import { CASE_ACTION_ROLES, hasRole, PAYMENT_PLAN_CREATE_ROLES } from "@/lib/utils/staff-permissions";
 import { toast } from "@/lib/stores/toast-store";
-import { CaseStatus, type Case } from "@/types/case";
+import type { Call } from "@/types/call";
+import { CaseStatus, type Case, type DebtEvaluation } from "@/types/case";
 
 import { TransitionCaseForm } from "./transition-case-form";
 
 interface StaffCaseDetailDrawerProps {
   caze: Case | null;
+  /** Next open (scheduled/pending) call for this case, when known — omitted for roles that can't view call logs. */
+  nextCall?: Call;
   onClose: () => void;
   onChanged: () => void;
 }
 
-export function StaffCaseDetailDrawer({ caze, onClose, onChanged }: StaffCaseDetailDrawerProps) {
+export function StaffCaseDetailDrawer({ caze, nextCall, onClose, onChanged }: StaffCaseDetailDrawerProps) {
   const roleName = useStaffSessionStore((s) => s.user?.role?.name);
   const canAct = hasRole(roleName, CASE_ACTION_ROLES);
+  const canConvertToPlan = hasRole(roleName, PAYMENT_PLAN_CREATE_ROLES);
+
+  const [evaluation, setEvaluation] = useState<DebtEvaluation | null>(null);
+  const [planModalOpen, setPlanModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!caze) return;
+
+    let cancelled = false;
+    getDebtEvaluation(caze._id)
+      .then((result) => {
+        if (!cancelled) setEvaluation(result);
+      })
+      .catch(() => {
+        if (!cancelled) setEvaluation(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [caze]);
 
   if (!caze) return null;
 
@@ -89,7 +114,39 @@ export function StaffCaseDetailDrawer({ caze, onClose, onChanged }: StaffCaseDet
             <dt className="text-xs font-medium uppercase tracking-wide text-ink-500">Escalation level</dt>
             <dd className="text-ink-800">Tier {caze.escalation_level}</dd>
           </div>
+          <div>
+            <dt className="text-xs font-medium uppercase tracking-wide text-ink-500">Next scheduled call</dt>
+            <dd className="text-ink-800">
+              {nextCall ? format(new Date(nextCall.scheduled_for!), "d MMM yyyy, h:mm a") : "—"}
+            </dd>
+          </div>
         </dl>
+
+        {evaluation && (
+          <div className="rounded-lg bg-ink-50 p-4">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-500">Debt evaluation</p>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <div>
+                <dt className="text-xs text-ink-500">Debt age</dt>
+                <dd className="text-ink-800">{evaluation.debt_age_years} yrs · {evaluation.bracket}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-ink-500">Commission weight</dt>
+                <dd className="text-ink-800">{evaluation.commission_weight}×</dd>
+              </div>
+              <div className="col-span-2">
+                <dt className="text-xs text-ink-500">Weighted commission estimate</dt>
+                <dd className="font-medium text-ink-900">{formatNaira(evaluation.weighted_commission_estimate)}</dd>
+              </div>
+            </dl>
+          </div>
+        )}
+
+        {canConvertToPlan && caze.status === CaseStatus.ACTIVE && !caze.payment_plan_id && (
+          <Button variant="secondary" onClick={() => setPlanModalOpen(true)}>
+            Convert to payment plan
+          </Button>
+        )}
 
         {caze.dispute && (
           <div className="flex flex-col gap-3 rounded-lg bg-status-warning-soft p-4">
@@ -120,6 +177,19 @@ export function StaffCaseDetailDrawer({ caze, onClose, onChanged }: StaffCaseDet
           </p>
         )}
       </div>
+
+      {canConvertToPlan && (
+        <CreatePaymentPlanModal
+          key={caze._id}
+          open={planModalOpen}
+          defaultCaseId={caze.case_id}
+          onClose={() => setPlanModalOpen(false)}
+          onCreated={() => {
+            setPlanModalOpen(false);
+            onChanged();
+          }}
+        />
+      )}
     </Drawer>
   );
 }

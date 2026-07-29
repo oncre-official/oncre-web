@@ -158,6 +158,20 @@ export function StaffDashboard() {
         ))}
       </div>
 
+      {canViewCases && summary?.escalation_pipeline && (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold text-ink-900">Recovery pipeline by tier</h2>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {summary.escalation_pipeline.map((bucket) => (
+              <Card key={bucket.level} className="p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-ink-500">L{bucket.level}</p>
+                <p className="mt-2 text-2xl font-semibold tabular-nums text-ink-900">{bucket.count}</p>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
       {canViewPayments && pipeline && (
         <div>
           <h2 className="mb-3 text-sm font-semibold text-ink-900">Payment pipeline</h2>
@@ -250,7 +264,7 @@ export function StaffDashboard() {
               {recentCases.map((caze) => (
                 <Link
                   key={caze._id}
-                  href="/staff/cases"
+                  href="/staff/recovery"
                   className="flex items-center justify-between border-b border-ink-100 px-4 py-3 text-sm last:border-b-0 hover:bg-ink-50"
                 >
                   <span className="font-mono text-xs text-ink-500">{caze.case_id}</span>

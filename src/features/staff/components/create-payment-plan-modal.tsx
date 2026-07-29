@@ -22,9 +22,11 @@ interface CreatePaymentPlanModalProps {
   open: boolean;
   onClose: () => void;
   onCreated: (payment: Payment) => void;
+  /** Pre-fills the case ID field when opened in-context (e.g. from a case's detail drawer). */
+  defaultCaseId?: string;
 }
 
-export function CreatePaymentPlanModal({ open, onClose, onCreated }: CreatePaymentPlanModalProps) {
+export function CreatePaymentPlanModal({ open, onClose, onCreated, defaultCaseId }: CreatePaymentPlanModalProps) {
   const {
     register,
     handleSubmit,
@@ -32,6 +34,7 @@ export function CreatePaymentPlanModal({ open, onClose, onCreated }: CreatePayme
     formState: { errors, isSubmitting },
   } = useForm<CreatePaymentPlanFormValues, unknown, CreatePaymentPlanFormOutput>({
     resolver: zodResolver(createPaymentPlanSchema),
+    defaultValues: { case_id: defaultCaseId, type: "week" },
   });
 
   const onSubmit = async (values: CreatePaymentPlanFormOutput) => {

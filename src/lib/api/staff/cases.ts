@@ -1,12 +1,24 @@
 import { apiRequest, toQueryString } from "@/lib/api/http-json";
 import type { ListResult } from "@/types/api";
-import type { Case, CreateCaseInput, Dispute } from "@/types/case";
+import type { Case, CreateCaseInput, DebtEvaluation, Dispute } from "@/types/case";
 import type { TransitionCaseFormValues } from "@/lib/validation/staff.schema";
 
 export function listCases(
-  params: { skip?: number; limit?: number; merchant_id?: string; customer_id?: string; status?: string } = {},
+  params: {
+    skip?: number;
+    limit?: number;
+    merchant_id?: string;
+    customer_id?: string;
+    status?: string;
+    recovery_mode?: string;
+    escalation_level?: number;
+  } = {},
 ): Promise<ListResult<Case>> {
   return apiRequest(`/api/staff/cases?${toQueryString(params)}`);
+}
+
+export function getDebtEvaluation(caseObjectId: string): Promise<DebtEvaluation> {
+  return apiRequest(`/api/staff/cases/${caseObjectId}/evaluation`);
 }
 
 export function createCase(input: CreateCaseInput): Promise<Case> {

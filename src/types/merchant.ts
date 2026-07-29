@@ -15,6 +15,9 @@ export interface Merchant {
   merchant_phone: string;
   business_type?: string;
   location: string;
+  bank_name?: string;
+  bank_account_number?: string;
+  bank_account_name?: string;
   channel?: string;
   activated: boolean;
   activated_at?: string;
@@ -32,5 +35,9 @@ export interface CreateMerchantInput {
   merchant_name: string;
   merchant_store_name: string;
   merchant_phone: string;
+  business_type: string;
   location: string;
+  bank_name?: string;
+  bank_account_number?: string;
+  bank_account_name?: string;
 }

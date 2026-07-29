@@ -10,7 +10,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeaderCell, TableRow } from "@/components/ui/table";
 import { DeactivateConfirmModal } from "@/features/staff/components/deactivate-confirm-modal";
 import { listCases } from "@/lib/api/staff/cases";
-import { deactivateCustomer, getCustomer } from "@/lib/api/staff/customers";
+import { clearCashOnly, deactivateCustomer, getCustomer, getRestrictions, setCashOnly } from "@/lib/api/staff/customers";
 import { approveMerchant, deactivateMerchant, getMerchant, rejectMerchant } from "@/lib/api/staff/merchants";
 import { useStaffSessionStore } from "@/lib/stores/staff-session-store";
 import { toast } from "@/lib/stores/toast-store";
@@ -23,7 +23,7 @@ import {
   MERCHANT_CUSTOMER_DEACTIVATE_ROLES,
 } from "@/lib/utils/staff-permissions";
 import type { Case } from "@/types/case";
-import { CustomerStatus, type Customer } from "@/types/customer";
+import { CustomerStatus, type Customer, type DebtorRestriction } from "@/types/customer";
 import { MerchantApprovalStatus, type Merchant } from "@/types/merchant";
 
 export type ProfileTarget = { kind: "merchant"; record: Merchant } | { kind: "customer"; record: Customer };
@@ -77,8 +77,14 @@ export function StaffDirectoryProfileDrawer({ target, onClose, onChanged }: Staf
   const canDeactivate = hasRole(roleName, MERCHANT_CUSTOMER_DEACTIVATE_ROLES);
   const canApprove = hasRole(roleName, MERCHANT_APPROVAL_ROLES);
 
-  const [data, setData] = useState<{ targetId: string; profile: Merchant | Customer; cases: Case[] } | null>(null);
+  const [data, setData] = useState<{
+    targetId: string;
+    profile: Merchant | Customer;
+    cases: Case[];
+    restrictions: DebtorRestriction[];
+  } | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [cashOnlyBusy, setCashOnlyBusy] = useState(false);
 
   useEffect(() => {
     if (!target) return;
@@ -91,11 +97,12 @@ export function StaffDirectoryProfileDrawer({ target, onClose, onChanged }: Staf
       target.kind === "merchant"
         ? listCases({ merchant_id: target.record.merchant_id, limit: 50 })
         : listCases({ customer_id: target.record.customer_id, limit: 50 });
+    const restrictionsRequest = target.kind === "customer" ? getRestrictions(target.record._id) : Promise.resolve([]);
 
-    Promise.all([profileRequest, casesRequest])
-      .then(([fetchedProfile, caseResult]) => {
+    Promise.all([profileRequest, casesRequest, restrictionsRequest])
+      .then(([fetchedProfile, caseResult, restrictions]) => {
         if (cancelled) return;
-        setData({ targetId: target.record._id, profile: fetchedProfile, cases: caseResult.row });
+        setData({ targetId: target.record._id, profile: fetchedProfile, cases: caseResult.row, restrictions });
       })
       .catch((error) => {
         if (!cancelled) handleStaffApiError(error);
@@ -149,6 +156,38 @@ export function StaffDirectoryProfileDrawer({ target, onClose, onChanged }: Staf
     }
   };
 
+  const handleSetCashOnly = async () => {
+    if (!data || !customer) return;
+    setCashOnlyBusy(true);
+    try {
+      const updated = await setCashOnly(customer._id);
+      const restrictions = await getRestrictions(customer._id);
+      setData({ ...data, profile: updated, restrictions });
+      toast.success(`${title} restricted to cash-only.`);
+      onChanged();
+    } catch (error) {
+      handleStaffApiError(error);
+    } finally {
+      setCashOnlyBusy(false);
+    }
+  };
+
+  const handleClearCashOnly = async () => {
+    if (!data || !customer) return;
+    setCashOnlyBusy(true);
+    try {
+      const updated = await clearCashOnly(customer._id);
+      const restrictions = await getRestrictions(customer._id);
+      setData({ ...data, profile: updated, restrictions });
+      toast.success(`Cash-only restriction cleared for ${title}.`);
+      onChanged();
+    } catch (error) {
+      handleStaffApiError(error);
+    } finally {
+      setCashOnlyBusy(false);
+    }
+  };
+
   return (
     <Drawer open={!!target} onClose={onClose} title={title}>
       {!profileMatchesTarget ? (
@@ -192,6 +231,9 @@ export function StaffDirectoryProfileDrawer({ target, onClose, onChanged }: Staf
                 <Field label="Business type" value={merchant.business_type} />
                 <Field label="Location" value={merchant.location} />
                 <Field label="Channel" value={merchant.channel} />
+                <Field label="Bank name" value={merchant.bank_name} />
+                <Field label="Bank account number" value={merchant.bank_account_number} />
+                <Field label="Bank account name" value={merchant.bank_account_name} />
                 <Field label="Created" value={formatDate(merchant.created_at)} />
                 <Field label="Created by" value={creatorLabel(merchant.creator)} />
               </>
@@ -238,6 +280,54 @@ export function StaffDirectoryProfileDrawer({ target, onClose, onChanged }: Staf
               </TableBody>
             </Table>
           </div>
+
+          {!isMerchant && customer && (
+            <div>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-500">Cash-only restriction history</p>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeaderCell>Status</TableHeaderCell>
+                    <TableHeaderCell>Reason</TableHeaderCell>
+                    <TableHeaderCell>By</TableHeaderCell>
+                    <TableHeaderCell>Date</TableHeaderCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {data.restrictions.length === 0 ? (
+                    <TableEmptyState colSpan={4} message="No restriction history." />
+                  ) : (
+                    data.restrictions.map((entry) => (
+                      <TableRow key={entry._id}>
+                        <TableCell>
+                          <Badge tone={entry.status === "cash_only" ? "warning" : "good"}>
+                            {entry.status === "cash_only" ? "Cash only" : "Cleared"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{entry.reason || "—"}</TableCell>
+                        <TableCell>{creatorLabel(entry.actioned_by)}</TableCell>
+                        <TableCell>{formatDate(entry.actioned_at)}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          {!isMerchant && canDeactivate && customer && customer.status !== CustomerStatus.INACTIVE && (
+            <div className="flex gap-2">
+              {customer.status === CustomerStatus.CASH_ONLY ? (
+                <Button variant="secondary" loading={cashOnlyBusy} onClick={handleClearCashOnly}>
+                  Clear cash-only restriction
+                </Button>
+              ) : (
+                <Button variant="secondary" loading={cashOnlyBusy} onClick={handleSetCashOnly}>
+                  Restrict to cash-only
+                </Button>
+              )}
+            </div>
+          )}
 
           {isMerchant && canApprove && merchant?.approval_status === MerchantApprovalStatus.PENDING && (
             <div className="flex gap-2">

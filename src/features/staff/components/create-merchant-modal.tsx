@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
 import { createMerchant } from "@/lib/api/staff/merchants";
 import { handleStaffApiError } from "@/lib/utils/staff-error";
 import { createMerchantSchema, CreateMerchantFormValues } from "@/lib/validation/staff.schema";
 import { toast } from "@/lib/stores/toast-store";
 import type { Merchant } from "@/types/merchant";
+import { BusinessType } from "@/types/portal";
 
 interface CreateMerchantModalProps {
   open: boolean;
@@ -56,8 +58,29 @@ export function CreateMerchantModal({ open, onClose, onCreated }: CreateMerchant
         <Field label="Phone number" htmlFor="merchant_phone" required error={errors.merchant_phone?.message}>
           <Input id="merchant_phone" invalid={!!errors.merchant_phone} {...register("merchant_phone")} />
         </Field>
+        <Field label="Business type" htmlFor="business_type" required error={errors.business_type?.message}>
+          <Select id="business_type" defaultValue="" invalid={!!errors.business_type} {...register("business_type")}>
+            <option value="" disabled>
+              Select a type
+            </option>
+            {Object.values(BusinessType).map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </Select>
+        </Field>
         <Field label="Location" htmlFor="location" required error={errors.location?.message}>
           <Input id="location" invalid={!!errors.location} {...register("location")} />
+        </Field>
+        <Field label="Bank name" htmlFor="bank_name" error={errors.bank_name?.message}>
+          <Input id="bank_name" invalid={!!errors.bank_name} {...register("bank_name")} />
+        </Field>
+        <Field label="Bank account number" htmlFor="bank_account_number" error={errors.bank_account_number?.message}>
+          <Input id="bank_account_number" invalid={!!errors.bank_account_number} {...register("bank_account_number")} />
+        </Field>
+        <Field label="Bank account name" htmlFor="bank_account_name" error={errors.bank_account_name?.message}>
+          <Input id="bank_account_name" invalid={!!errors.bank_account_name} {...register("bank_account_name")} />
         </Field>
         <Button type="submit" loading={isSubmitting} className="w-full">
           Create merchant

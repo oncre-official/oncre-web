@@ -5,7 +5,6 @@ import { useStaffSessionStore } from "@/lib/stores/staff-session-store";
 
 export default function StaffHomePage() {
   const user = useStaffSessionStore((s) => s.user);
-  const roleName = user?.role?.name;
 
   return (
     <div>

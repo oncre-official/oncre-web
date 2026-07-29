@@ -53,3 +53,22 @@ export interface CreatePaymentPlanInput {
   type: TrancheType;
   value: number;
 }
+
+export enum InstallmentPaymentStatus {
+  PENDING = "pending",
+  PAID = "paid",
+  OVERDUE = "overdue",
+}
+
+/** Mirrors oncre-backend `PaymentInstallment` model (src/app/payment/model/payment-installment.model.ts). */
+export interface PaymentInstallment {
+  _id: string;
+  installment_id: string;
+  plan_id: string;
+  case_id: string;
+  amount: number;
+  amount_paid?: number;
+  due_date: string;
+  status: InstallmentPaymentStatus;
+  paid_at?: string;
+}

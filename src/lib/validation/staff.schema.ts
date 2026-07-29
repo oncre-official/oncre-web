@@ -8,7 +8,11 @@ export const createMerchantSchema = z.object({
   merchant_name: z.string().trim().min(1, "Enter the merchant's name"),
   merchant_store_name: z.string().trim().min(1, "Enter the store name"),
   merchant_phone: z.string().trim().min(1, "Enter a phone number"),
+  business_type: z.string().trim().min(1, "Select a business type"),
   location: z.string().trim().min(1, "Enter a location"),
+  bank_name: z.string().trim().optional(),
+  bank_account_number: z.string().trim().optional(),
+  bank_account_name: z.string().trim().optional(),
 });
 
 export type CreateMerchantFormValues = z.infer<typeof createMerchantSchema>;
@@ -17,7 +21,7 @@ export type CreateMerchantFormValues = z.infer<typeof createMerchantSchema>;
 export const createCustomerSchema = z.object({
   customer_name: z.string().trim().min(1, "Enter the customer's name"),
   business_name: z.string().trim().optional(),
-  customer_phone: z.string().trim().min(1, "Enter a phone number"),
+  customer_phone: z.string().trim().refine(isValidNigerianPhone, "Enter a valid Nigerian phone number"),
 });
 
 export type CreateCustomerFormValues = z.infer<typeof createCustomerSchema>;

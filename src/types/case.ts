@@ -101,3 +101,14 @@ export interface TransitionCaseInput {
   outcome: TransitionOutcome;
   note?: string;
 }
+
+export type DebtAgeBracket = "0-1yr" | "1-2yr" | "3-4yr" | "4yr+";
+
+/** Mirrors oncre-backend `DebtEvaluation` (src/app/case/helper/debt-evaluation.ts). */
+export interface DebtEvaluation {
+  debt_age_years: number;
+  bracket: DebtAgeBracket;
+  commission_weight: number;
+  base_commission_rate: number;
+  weighted_commission_estimate: number;
+}

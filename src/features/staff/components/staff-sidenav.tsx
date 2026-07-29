@@ -13,25 +13,36 @@ export function StaffSidenav() {
   const roleName = useStaffSessionStore((s) => s.user?.role?.name);
 
   const items = staffNavItems.filter((item) => !item.allowedRoles || hasRole(roleName, item.allowedRoles));
+  const modules = items.filter((item) => item.section === "module");
+  const utilities = items.filter((item) => item.section === "utility");
+
+  const renderLink = (item: (typeof items)[number]) => {
+    const isActive = pathname === item.href || (item.href !== "/staff" && pathname.startsWith(item.href));
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={cn(
+          "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+          isActive ? "bg-brand-50 text-brand-700" : "text-ink-700 hover:bg-ink-50",
+        )}
+      >
+        <item.icon className="h-4 w-4" />
+        {item.label}
+      </Link>
+    );
+  };
 
   return (
     <nav className="flex w-56 shrink-0 flex-col gap-1 border-r border-ink-100 bg-white p-3">
-      {items.map((item) => {
-        const isActive = pathname === item.href || (item.href !== "/staff" && pathname.startsWith(item.href));
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-              isActive ? "bg-brand-50 text-brand-700" : "text-ink-700 hover:bg-ink-50",
-            )}
-          >
-            <item.icon className="h-4 w-4" />
-            {item.label}
-          </Link>
-        );
-      })}
+      {modules.map(renderLink)}
+
+      {utilities.length > 0 && (
+        <>
+          <div className="mx-3 my-2 border-t border-ink-100" />
+          {utilities.map(renderLink)}
+        </>
+      )}
     </nav>
   );
 }
